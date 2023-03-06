@@ -465,7 +465,9 @@ export class Worker {
                     } else {
                         data = [new Uint8Array(Buffer.from(metaData))];
                     }
-                    result.data = await client.mintNFT(tokenId, supplyKey, data, transactionMemo);
+                    let txResult = await client.mintNFT(tokenId, supplyKey, data, transactionMemo);
+                    this.logger.info(`Task insights: ${task.id}, ${task.type}, ${txResult.transactionId}, ${txResult.status}`, [this.channelName]);
+                    result.data = txResult.serials;
                     break;
                 }
 

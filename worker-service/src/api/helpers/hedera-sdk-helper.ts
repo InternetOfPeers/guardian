@@ -35,6 +35,7 @@ import {
     TopicId,
     TopicMessageSubmitTransaction,
     Transaction,
+    TransactionId,
     TransactionReceipt,
     TransactionRecord,
     TransferTransaction
@@ -631,7 +632,7 @@ export class HederaSDKHelper {
         supplyKey: string | PrivateKey,
         data: Uint8Array[],
         transactionMemo?: string
-    ): Promise<number[]> {
+    ): Promise<{status: boolean, transactionId: string, serials: number[]}> {
         const client = this.client;
 
         const _supplyKey = HederaUtils.parsPrivateKey(supplyKey, true, 'Supply Key');
@@ -644,11 +645,15 @@ export class HederaSDKHelper {
         const signTx = await transaction.sign(_supplyKey);
         const receipt = await this.executeAndReceipt(client, signTx, 'TokenMintNFTTransaction');
         const transactionStatus = receipt.status;
-
-        if (transactionStatus === Status.Success) {
-            return receipt.serials.map(e => e.toNumber())
+        const result = transactionStatus === Status.Success;
+        if(result) {
+            return { status: result,
+                transactionId: signTx.transactionId.toString(),
+                serials: receipt.serials.map(e => e.toNumber()) }
         } else {
-            return null;
+            return { status: result,
+                transactionId: signTx.transactionId.toString(),
+                serials: null };
         }
     }
 
