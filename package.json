@@ -1,22 +1,25 @@
 {
-  "name": "guardian",
-  "private": true,
-  "packageManager": "yarn@3.2.1",
-  "workspaces": [
-    "interfaces",
-    "common",
-    "api-gateway",
-    "auth-service",
-    "guardian-service",
-    "logger-service",
-    "mrv-sender",
-    "topic-viewer",
-    "tree-viewer",
-    "analytics-service",
-    "worker-service",
-    "policy-service",
-    "api-tests",
-    "notification-service"
-  ],
-    "version": "2.18.0"
+    "name": "guardian",
+    "private": true,
+    "packageManager": "yarn@3.2.1",
+    "resolutions": {
+        "@azure/core-rest-pipeline": "1.12.1"
+    },
+    "workspaces": [
+        "interfaces",
+        "common",
+        "api-gateway",
+        "auth-service",
+        "guardian-service",
+        "logger-service",
+        "mrv-sender",
+        "topic-viewer",
+        "tree-viewer",
+        "analytics-service",
+        "worker-service",
+        "policy-service",
+        "api-tests",
+        "notification-service"
+    ],
+    "version": "2.18.1"
 }
