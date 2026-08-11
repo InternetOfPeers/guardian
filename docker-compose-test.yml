@@ -1,0 +1,15 @@
+name: aaa
+
+services:
+  server:
+    image: alpine:3.23.2
+    networks:
+      - shared
+    command: [ "sh", "-c", "nc -l -p 12345" ]
+    init: true
+
+networks:
+  shared:
+    external: true
+    name: shared-network
+

@@ -1,0 +1,14 @@
+name: bbb
+
+services:
+  client:
+    image: alpine:3.23.2
+    networks:
+      - shared
+    command: [ "sh", "-c", "nc server 12345" ]
+    init: true
+
+networks:
+  shared:
+    external: true
+    name: shared-network
