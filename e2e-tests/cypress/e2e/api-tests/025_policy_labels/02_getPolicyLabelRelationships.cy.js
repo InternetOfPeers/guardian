@@ -22,17 +22,6 @@ context('Get policy label relationships', { tags: ['policy_labels', 'firstPool',
             failOnStatusCode: false,
         });
 
-    const getPolicyByName = (name, headers = {}) =>
-        getPolicies(headers).then(({ body, status }) => {
-            expect(status).to.eq(STATUS_CODE.OK);
-            expect(body).to.be.an('array');
-            const found = body.find(p => p.name === name);
-            if (!found) {
-                throw new Error(`Policy with name "${name}" not found. Available: ${body.map(p => p.name).join(', ')}`);
-            }
-            return found;
-        });
-
     const getPolicyLabelRelationships = (labelId, headers = {}) =>
         cy.request({
             method: METHOD.GET,
@@ -51,13 +40,15 @@ context('Get policy label relationships', { tags: ['policy_labels', 'firstPool',
                 expect(body).to.be.an('array').and.not.be.empty;
                 policyLabel = body.at(0);
                 expect(policyLabel).to.have.property('id');
-            });
 
-            // Get the target policy object by name
-            getPolicyByName('iRec_4', headers).then((p) => {
-                policy = p;
-                // Basic shape checks (optional but helpful)
-                expect(policy).to.include.all.keys('id', 'name', 'uuid', 'version');
+                // Resolve the policy the label actually points at, rather than any policy
+                // sharing its name: several iRec_4 copies can coexist, and only the one the
+                // label was created against will have matching roles/topic ids.
+                getPolicies(headers).then(({ body: policies, status: policiesStatus }) => {
+                    expect(policiesStatus).to.eq(STATUS_CODE.OK);
+                    policy = policies.find((p) => p.id === policyLabel.policyId);
+                    expect(policy, `the policy backing label ${policyLabel.id}`).to.not.be.undefined;
+                });
             });
         });
     });

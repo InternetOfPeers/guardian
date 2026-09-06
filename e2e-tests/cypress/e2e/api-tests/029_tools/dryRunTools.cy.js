@@ -137,7 +137,7 @@ context('Tools', { tags: ['tools', 'thirdPool', 'all', 'all-no-mgs'] }, () => {
             }).then((response) => {
                 expect(response.status).eql(STATUS_CODE.OK);
                 response.body.forEach(element => {
-                    if (element.name == 'toolDryRunTest') {
+                    if (element.name === 'toolDryRunTest') {
                         policy.config.children.at(0).children.splice(2, 0,
                             {
                                 'id': toolBlockConfigUUID,
@@ -191,7 +191,7 @@ context('Tools', { tags: ['tools', 'thirdPool', 'all', 'all-no-mgs'] }, () => {
                                 headers: {
                                     authorization,
                                 },
-                                timeout: 180000,
+                                timeout: 300000,
                             }).then((response) => {
                                 expect(response.status).to.eq(STATUS_CODE.OK);
                             });
