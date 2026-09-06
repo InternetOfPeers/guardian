@@ -11,7 +11,7 @@ import * as Authorization from '../../../support/authorization';
  *   POST /policies/:id/grids/:gridId/records/:recordId/actions/:actionId
  *
  */
-context('Policy Grid Actions API', { tags: ['policies', 'gridActions', 'all'] }, () => {
+context('Policy Grid Actions API', { tags: ['policies', 'gridActions', 'all', 'all-no-mgs'] }, () => {
     const SRUsername = Cypress.env('SRUser');
 
     let policyId;

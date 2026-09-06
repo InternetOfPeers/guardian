@@ -3,7 +3,7 @@ import { METHOD, STATUS_CODE } from '../../../support/api/api-const';
 import API from '../../../support/ApiUrls';
 import * as Authorization from '../../../support/authorization';
 
-context('Tools', { tags: ['tools', 'thirdPool', 'all'] }, () => {
+context('Tools', { tags: ['tools', 'thirdPool', 'all', 'all-no-mgs'] }, () => {
     const SRUsername = Cypress.env('SRUser');
     let toolId; let policy; let policyId;
     const toolBlockConfigUUID = randomInt(99999).toString();

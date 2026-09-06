@@ -4,7 +4,7 @@ import API from '../../../support/ApiUrls';
 import * as Authorization from '../../../support/checkingMethods';
 import * as Contracts from '../../../support/api/contracts';
 
-context('Contracts', { tags: ['contracts', 'firstPool', 'all'] }, () => {
+context('Contracts', { tags: ['contracts', 'firstPool', 'all', 'all-no-mgs'] }, () => {
     const SRUsername = Cypress.env('SRUser');
     const SR2Username = Cypress.env('SR2User');
     const UserUsername = Cypress.env('User');
