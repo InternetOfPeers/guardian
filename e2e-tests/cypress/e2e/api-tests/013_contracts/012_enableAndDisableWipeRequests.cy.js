@@ -5,7 +5,7 @@ import * as Checks from '../../../support/checkingMethods';
 import * as Authorization from '../../../support/authorization';
 import * as Contracts from '../../../support/api/contracts';
 
-context('Contracts', { tags: ['policy_labels', 'formulas', 'trustchains', 'contracts', 'firstPool', 'all'] }, () => {
+context('Contracts', { tags: ['policy_labels', 'formulas', 'trustchains', 'contracts', 'firstPool', 'all', 'all-no-mgs'] }, () => {
 	const SRUsername = Cypress.env('SRUser');
 	const UserUsername = Cypress.env('User');
 	const contractNameR = 'FirstAPIContractR';
