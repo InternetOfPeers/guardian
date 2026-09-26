@@ -30,6 +30,8 @@ export async function aiSuggestionsAPI(aiManager: AIManager, logger: PinoLogger)
                 result = await aiManager.ask(msg.question);
             }
 
+            logger.info("AI result:"+result, ['AI_SERVICE']);
+
             return new MessageResponse(result);
         } catch (error) {
             return new MessageError(error.message);

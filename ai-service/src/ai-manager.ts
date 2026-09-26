@@ -21,6 +21,7 @@ export class AIManager {
     chain: any;
     vector: FaissStore | null;
     model: ChatOpenAI;
+    private modelConfig: any;
     policyDescriptions: PolicyDescription[];
 
     constructor(private readonly logger: PinoLogger) {
@@ -41,16 +42,31 @@ export class AIManager {
             this.versionGPT.toLowerCase().startsWith(model)
         );
 
+        this.logger.info("process.env.LLM_URL:"+process.env.LLM_URL, ['AI_SERVICE']);
+        this.logger.info("process.env.LLM_MODEL:"+process.env.LLM_MODEL, ['AI_SERVICE']);
+
+        this.logger.info("process.env.GPT_VERSION:"+process.env.GPT_VERSION, ['AI_SERVICE']);
+        this.logger.info("process.env.OPENAI_API_BASE:"+process.env.OPENAI_API_BASE, ['AI_SERVICE']);
+
         // Configure model with or without temperature based on model support
         const modelConfig: any = {
-            modelName: this.versionGPT,
-            openAIApiKey
+            modelName: process.env.GPT_VERSION,
+            openAIApiKey,
+            configuration: {
+                baseURL: process.env.OPENAI_API_BASE
+            },
         };
+
+        // "http://localhost:1234/v1"
+        // configuration: { baseURL: process.env.LLM_URL.slice(0,-1), },
 
         if (supportsTemperature) {
             modelConfig.temperature = 0;
         }
 
+        // Kept so per-request model instances (see suggestProperties) can be
+        // rebuilt from the same settings plus a client timeout.
+        this.modelConfig = modelConfig;
         this.model = new ChatOpenAI(modelConfig);
         this.vector = null;
         this.chain = null;
@@ -71,9 +87,27 @@ export class AIManager {
         return answer;
     }
 
+    /**
+     * Milliseconds still available for the LLM call. The gateway gives up on the NATS
+     * request after `totalTimeoutMs` and discards the reply, so the model call must not
+     * be allowed to outlive the same budget or it would burn GPU time on a result the
+     * UI can never display.
+     */
+    static remainingModelTimeoutMs(totalTimeoutMs: number, startedAt: number, now: number = Date.now()): number {
+        return totalTimeoutMs - (now - startedAt);
+    }
+
     async suggestProperties(request: IPropertySuggestionRequest): Promise<IPropertySuggestionResponse> {
+        // Same variable the gateway reads for its NATS request timeout; both services
+        // load the same config files, so the two deadlines stay in sync.
+        const timeoutMs = Number(process.env.GLOSSARY_AI_TIMEOUT_MS) || 120_000;
+        const startedAt = Date.now();
         try {
             const fieldNames = request?.fieldNames || [];
+            await this.logger.info(
+                `[GLOSSARY_AI] suggestProperties received: schemaId=${request?.schemaId} requestedFields=${fieldNames.length} timeoutMs=${timeoutMs}`,
+                ['AI_SERVICE']
+            );
             if (!request?.schemaId || !fieldNames.length) {
                 return { available: true, results: [] };
             }
@@ -81,6 +115,10 @@ export class AIManager {
             const dbRequests = new AISuggestionsDB();
             const rawSchema = await dbRequests.getSchemaById(request.schemaId);
             if (!rawSchema) {
+                await this.logger.warn(
+                    `[GLOSSARY_AI] schema "${request.schemaId}" not found; returning unavailable`,
+                    ['AI_SERVICE']
+                );
                 return { available: false, results: [] };
             }
             // Full schema
@@ -101,13 +139,44 @@ export class AIManager {
             }
 
             const properties = await dbRequests.getPolicyProperties(schema.iwaVersion);
+
+            const modelTimeoutMs = AIManager.remainingModelTimeoutMs(timeoutMs, startedAt);
+            if (modelTimeoutMs <= 0) {
+                await this.logger.warn(
+                    `[GLOSSARY_AI] the ${timeoutMs}ms budget was already spent on DB lookups; skipping the LLM call`,
+                    ['AI_SERVICE']
+                );
+                return { available: false, results: [] };
+            }
+            // Rebuilt per request (a fresh instance, not `withConfig`, which only wraps
+            // the runnable and never reaches the client):
+            // - the OpenAI client is built lazily from the constructor `timeout` field,
+            //   so a fresh instance is the only way to bound the in-flight HTTP call;
+            //   on timeout the SDK aborts the fetch and the LLM server cancels the
+            //   generation instead of finishing it;
+            // - `maxRetries: 0`: the model's LangChain AsyncCaller defaults to 6
+            //   retries, so a call that fails at the client level (timeout) or at the
+            //   response level (model returns JSON the schema parser rejects) would
+            //   otherwise be re-run up to 7 times - a full generation each, all of it
+            //   spent on a result the UI can never display.
+            const model = new ChatOpenAI({ ...this.modelConfig, timeout: modelTimeoutMs, maxRetries: 0 });
+
             const results = await PropertySuggestionConnect.suggest(
-                this.model, allFields, properties || [], schema.name, schema.description, targetFieldNames
+                model, allFields, properties || [], schema.name, schema.description, targetFieldNames, this.logger
+            );
+
+            await this.logger.info(
+                `[GLOSSARY_AI] suggestProperties completed in ${Date.now() - startedAt}ms: ${results.length} field(s), ` +
+                `${results.reduce((sum, result) => sum + result.candidates.length, 0)} candidate(s)`,
+                ['AI_SERVICE']
             );
 
             return { available: true, results };
         } catch (e) {
-            await this.logger.error(e.message, ['AI_SERVICE']);
+            await this.logger.error(
+                `[GLOSSARY_AI] suggestProperties failed after ${Date.now() - startedAt}ms: ${e.message}`,
+                ['AI_SERVICE']
+            );
             return { available: false, results: [] };
         }
     }
